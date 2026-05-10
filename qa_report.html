@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>QA Responsive Comparison</title>
+  <style>
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 24px;
+  background: #f6f7f9;
+  color: #1a1a1a;
+  line-height: 1.5;
+}
+.container { max-width: 1700px; margin: 0 auto; }
+h1 { margin: 0 0 8px; font-size: 26px; }
+h2 { margin: 32px 0 12px; font-size: 20px; border-bottom: 1px solid #e3e5e8; padding-bottom: 6px; }
+.timestamp { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+.meta {
+  background: #fff;
+  border: 1px solid #e3e5e8;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 6px 16px;
+  font-size: 14px;
+}
+.meta dt { color: #6b7280; }
+.meta dd { margin: 0; word-break: break-all; }
+
+/* Sticky controls bar — visible while you scroll through every width block */
+.controls {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e3e5e8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.controls label { cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 6px; }
+.controls input[type=range] { width: 200px; }
+.controls .zoom-val { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-width: 44px; }
+
+/* Width tabs */
+.width-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  background: #fff;
+  border: 1px solid #e3e5e8;
+  border-radius: 8px;
+  padding: 12px;
+}
+.width-tab {
+  display: inline-block;
+  padding: 6px 12px;
+  background: #f3f4f6;
+  border: 1px solid #e3e5e8;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.width-tab:hover { background: #e0e7ff; border-color: #818cf8; }
+
+/* Per-width comparison block */
+.width-block {
+  background: #fff;
+  border: 1px solid #e3e5e8;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.width-block-header {
+  padding: 14px 18px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e3e5e8;
+  font-weight: 600;
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.width-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.width-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.width-pane {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e3e5e8;
+}
+.width-pane:last-child { border-right: none; }
+.width-pane-header {
+  padding: 8px 14px;
+  background: #fafbfc;
+  border-bottom: 1px solid #e3e5e8;
+  font-weight: 600;
+  font-size: 13px;
+}
+.width-pane-header .label-live    { color: #15803d; }
+.width-pane-header .label-staging { color: #1d4ed8; }
+.width-pane-header a {
+  font-weight: 400;
+  font-size: 12px;
+  color: #6b7280;
+  text-decoration: none;
+  margin-left: 8px;
+}
+.width-pane-header a:hover { text-decoration: underline; }
+.shot-wrap {
+  overflow: auto;
+  max-height: 80vh;
+  background: #fafbfc;
+}
+.shot-wrap img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  transition: transform 0.1s;
+  transform-origin: top left;
+}
+.shot-missing {
+  padding: 40px;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 14px;
+}
+.error-box {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #7f1d1d;
+  padding: 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  margin: 16px 0;
+}
+
+/* Content section */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: #fff;
+  border: 1px solid #e3e5e8;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.stat .num { font-size: 24px; font-weight: 700; }
+.stat .label { color: #6b7280; font-size: 13px; }
+.stat.zero .num { color: #15803d; }
+.stat.alert .num { color: #b91c1c; }
+.card {
+  background: #fff;
+  border: 1px solid #e3e5e8;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.card h3 { margin: 0 0 12px; font-size: 16px; }
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: uppercase;
+}
+.list-empty { color: #15803d; font-style: italic; font-size: 14px; }
+.changed-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f3f5;
+}
+.changed-pair:last-child { border-bottom: none; }
+.changed-side {
+  background: #fafbfc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  word-break: break-word;
+}
+.changed-side.live    { border-left: 3px solid #15803d; }
+.changed-side.staging { border-left: 3px solid #1d4ed8; }
+.side-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  display: block;
+}
+.del { background: #ffeef0; color: #8a1f11; text-decoration: line-through; padding: 0 2px; border-radius: 3px; }
+.add { background: #e6ffed; color: #0a6b2c; padding: 0 2px; border-radius: 3px; }
+
+/* Fonts section */
+.fonts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.font-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.font-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  border: 1px solid #e3e5e8;
+}
+.font-chip-shared { background: #f3f4f6; color: #1a1a1a; }
+.font-chip-live { background: #dcfce7; color: #166534; border-color: #86efac; }
+.font-chip-staging { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+
+/* Color chips & swatches */
+.color-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.color-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid #e3e5e8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.color-chip-shared { background: #f9fafb; color: #1a1a1a; }
+.color-chip-live { background: #dcfce7; color: #166534; border-color: #86efac; }
+.color-chip-staging { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.color-swatch {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.15);
+  vertical-align: middle;
+  /* Checkered backdrop so transparent/alpha colors are visible */
+  background-image:
+    linear-gradient(45deg, #ddd 25%, transparent 25%),
+    linear-gradient(-45deg, #ddd 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ddd 75%),
+    linear-gradient(-45deg, transparent 75%, #ddd 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+.color-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+.color-count {
+  color: #6b7280;
+  font-size: 11px;
+}
+.font-swatch {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  border: 1px solid #e3e5e8;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+.font-mismatch-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f3f5;
+}
+.font-mismatch-row:last-child { border-bottom: none; }
+.font-mismatch-text {
+  font-size: 14px;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+.font-mismatch-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.alt-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 4px;
+  word-break: break-all;
+}
+.crop-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 10px 0 12px;
+}
+.crop-col .side-label { margin-bottom: 4px; }
+.crop-wrap {
+  background: #fafbfc;
+  border: 1px solid #e3e5e8;
+  border-radius: 6px;
+  padding: 6px;
+  overflow: hidden;
+  max-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.crop-wrap img {
+  max-width: 100%;
+  max-height: 200px;
+  display: block;
+}
+.crop-missing {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 12px;
+  padding: 20px;
+}
+
+@media (max-width: 1100px) {
+  .width-compare { grid-template-columns: 1fr; }
+  .width-pane { border-right: none; border-bottom: 1px solid #e3e5e8; }
+  .changed-pair { grid-template-columns: 1fr; }
+  .fonts-grid { grid-template-columns: 1fr; }
+  .font-mismatch-pair { grid-template-columns: 1fr; }
+  .crop-pair { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>QA Responsive Comparison</h1>
+    <p class="timestamp">Generated 2026-05-10 14:21:25</p>
+
+    <dl class="meta">
+      <dt>Live URL</dt><dd><a href="https://malbisdentstaging.com/services" target="_blank">https://malbisdentstaging.com/services</a></dd>
+      <dt>Staging URL</dt><dd><a href="https://malbisparkwaydentistry.kinsta.cloud/services/" target="_blank">https://malbisparkwaydentistry.kinsta.cloud/services/</a></dd>
+      <dt>Widths</dt><dd>1440px, 768px, 320px</dd>
+    </dl>
+
+    
+
+    <div class="controls">
+      <label><input type="checkbox" id="sync" checked> Sync scroll</label>
+      <label>Zoom: <input type="range" id="zoom" min="25" max="200" value="100"> <span id="zoom-label" class="zoom-val">100%</span></label>
+    </div>
+
+    <h2>Screenshots by viewport width</h2>
+    <div class="width-tabs"><a class="width-tab" href="#width-1440">1440px</a><a class="width-tab" href="#width-768">768px</a><a class="width-tab" href="#width-320">320px</a></div>
+    
+    <div class="width-block" id="width-1440">
+      <div class="width-block-header">
+        <span>Viewport width</span>
+        <span class="width-label">1440px</span>
+      </div>
+      <div class="width-compare">
+        
+        <div class="width-pane">
+          <div class="width-pane-header">
+            <span class="label-live">LIVE</span>
+            <a href="https://malbisdentstaging.com/services" target="_blank">Open ↗</a>
+          </div>
+          <div class="shot-wrap"><img src="qa_output/live_1440.png" alt="LIVE at 1440px"></div>
+        </div>
+        
+        
+        <div class="width-pane">
+          <div class="width-pane-header">
+            <span class="label-staging">STAGING</span>
+            <a href="https://malbisparkwaydentistry.kinsta.cloud/services/" target="_blank">Open ↗</a>
+          </div>
+          <div class="shot-wrap"><img src="qa_output/staging_1440.png" alt="STAGING at 1440px"></div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <div class="width-block" id="width-768">
+      <div class="width-block-header">
+        <span>Viewport width</span>
+        <span class="width-label">768px</span>
+      </div>
+      <div class="width-compare">
+        
+        <div class="width-pane">
+          <div class="width-pane-header">
+            <span class="label-live">LIVE</span>
+            <a href="https://malbisdentstaging.com/services" target="_blank">Open ↗</a>
+          </div>
+          <div class="shot-wrap"><img src="qa_output/live_768.png" alt="LIVE at 768px"></div>
+        </div>
+        
+        
+        <div class="width-pane">
+          <div class="width-pane-header">
+            <span class="label-staging">STAGING</span>
+            <a href="https://malbisparkwaydentistry.kinsta.cloud/services/" target="_blank">Open ↗</a>
+          </div>
+          <div class="shot-wrap"><img src="qa_output/staging_768.png" alt="STAGING at 768px"></div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <div class="width-block" id="width-320">
+      <div class="width-block-header">
+        <span>Viewport width</span>
+        <span class="width-label">320px</span>
+      </div>
+      <div class="width-compare">
+        
+        <div class="width-pane">
+          <div class="width-pane-header">
+            <span class="label-live">LIVE</span>
+            <a href="https://malbisdentstaging.com/services" target="_blank">Open ↗</a>
+          </div>
+          <div class="shot-wrap"><img src="qa_output/live_320.png" alt="LIVE at 320px"></div>
+        </div>
+        
+        
+        <div class="width-pane">
+          <div class="width-pane-header">
+            <span class="label-staging">STAGING</span>
+            <a href="https://malbisparkwaydentistry.kinsta.cloud/services/" target="_blank">Open ↗</a>
+          </div>
+          <div class="shot-wrap"><img src="qa_output/staging_320.png" alt="STAGING at 320px"></div>
+        </div>
+        
+      </div>
+    </div>
+    
+
+    
+    <h2>Content Mismatches</h2>
+    
+    <div class="summary-grid">
+      <div class="stat alert"><div class="num">17</div><div class="label">Changed text</div></div>
+    </div>
+    
+    <div class="card"><h3>Changed text</h3>
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  We recommend routine dental cleanings for several reasons. When we perform a professional cleaning, we remove the buildup of plaque and tartar. We also clean the parts of your <span class="del">child&#x27;s</span> teeth that are hard to reach, such as underneath the gums. After a cleaning, we will polish your <span class="del">child&#x27;s</span> teeth so that they shine! We can also apply a fluoride treatment, if necessary, to help prevent tooth decay.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  We recommend routine dental cleanings for several reasons. When we perform a professional cleaning, we remove the buildup of plaque and tartar. We also clean the parts of your <span class="add">child’s</span> teeth that are hard to reach, such as underneath the gums. After a cleaning, we will polish your <span class="add">child’s</span> teeth so that they shine! We can also apply a fluoride treatment, if necessary, to help prevent tooth decay.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  We truly believe that regular dental examinations are important in order for your child to have good dental health and a smile of which he or she can be proud. We start by doing a professional cleaning, removing all of the bad tartar and other buildup on your <span class="del">child&#x27;s</span> teeth. We then do an examination, looking to catch and fix any problems before they become bigger ones. We examine each tooth, looking for any signs of decay, damage, or any other problems, such as signs of infection.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  We truly believe that regular dental examinations are important in order for your child to have good dental health and a smile of which he or she can be proud. We start by doing a professional cleaning, removing all of the bad tartar and other buildup on your <span class="add">child’s</span> teeth. We then do an examination, looking to catch and fix any problems before they become bigger ones. We examine each tooth, looking for any signs of decay, damage, or any other problems, such as signs of infection.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  One of the most commonly used types of sedation is nitrous oxide, which is also known as laughing gas. This helps many children relax during their procedure. Nitrous oxide is a combination of two different gases — oxygen and nitrous oxide. We administer the gas through a small mask placed over your <span class="del">child&#x27;s</span> nose. The gas will make your child relax without the full effect of anesthesia.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  One of the most commonly used types of sedation is nitrous oxide, which is also known as laughing gas. This helps many children relax during their procedure. Nitrous oxide is a combination of two different gases — oxygen and nitrous oxide. We administer the gas through a small mask placed over your <span class="add">child’s</span> nose. The gas will make your child relax without the full effect of anesthesia.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  We believe that fluoride works well to strengthen <span class="del">children&#x27;s</span> teeth. It also has been shown to help prevent tooth decay in people of all ages. For this reason, the American Dental Association, American Academy of Pediatrics, and the American Medical Association believe that topical fluoride is necessary for good oral health. Silver Diamine Fluoride is a safe, effective, and minimally invasive treatment option.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  We believe that fluoride works well to strengthen <span class="add">children’s</span> teeth. It also has been shown to help prevent tooth decay in people of all ages. For this reason, the American Dental Association, American Academy of Pediatrics, and the American Medical Association believe that topical fluoride is necessary for good oral health. Silver Diamine Fluoride is a safe, effective, and minimally invasive treatment option.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  Cavities are one of the most common childhood dental issues. When we detect a cavity, we will recommend a filling to restore the tooth and prevent further decay. We use tooth-colored composite resin fillings that blend naturally with your <span class="del">child&#x27;s</span> teeth. Our gentle approach ensures your child feels comfortable throughout the procedure.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  Cavities are one of the most common childhood dental issues. When we detect a cavity, we will recommend a filling to restore the tooth and prevent further decay. We use tooth-colored composite resin fillings that blend naturally with your <span class="add">child’s</span> teeth. Our gentle approach ensures your child feels comfortable throughout the procedure.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  Sometimes a tooth extraction is necessary to protect your <span class="del">child&#x27;s</span> overall oral health. This may be needed for severely decayed teeth, teeth that are causing crowding, or baby teeth that are not falling out on their own. We take every precaution to make the procedure as comfortable as possible, using appropriate anesthesia and a gentle technique.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  Sometimes a tooth extraction is necessary to protect your <span class="add">child’s</span> overall oral health. This may be needed for severely decayed teeth, teeth that are causing crowding, or baby teeth that are not falling out on their own. We take every precaution to make the procedure as comfortable as possible, using appropriate anesthesia and a gentle technique.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  We are proud to offer specialized dental care for children with special healthcare needs. Our team is trained and experienced in working with patients who have physical, developmental, behavioral, or emotional conditions. We take the time to understand each <span class="del">child&#x27;s</span> unique needs and tailor our approach accordingly, ensuring every child receives the compassionate care they deserve.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  We are proud to offer specialized dental care for children with special healthcare needs. Our team is trained and experienced in working with patients who have physical, developmental, behavioral, or emotional conditions. We take the time to understand each <span class="add">child’s</span> unique needs and tailor our approach accordingly, ensuring every child receives the compassionate care they deserve.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  <span class="del">Google</span> <span class="del">Review</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">span</span> · 72% match</span>
+                  <span class="add">More</span> <span class="add">Reviews</span>
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">h2</span></span>
+                  Ready to Schedule <span class="del">YourChild&#x27;s</span> Visit?
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">h2</span> · 98% match</span>
+                  Ready to Schedule <span class="add">Your Child&#x27;s</span> Visit?
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  Call us today or request an appointment online. We <span class="del">can&#x27;t</span> wait to meet your family and give your child the smile they deserve.
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">p</span> · 99% match</span>
+                  Call us today or request an appointment online. We <span class="add">can’t</span> wait to meet your family and give your child the smile they deserve.
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">span</span></span>
+                  <span class="del">Monday:</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">td</span> · 92% match</span>
+                  <span class="add">Monday</span>
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">span</span></span>
+                  <span class="del">Tuesday:</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">td</span> · 93% match</span>
+                  <span class="add">Tuesday</span>
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">span</span></span>
+                  <span class="del">Wednesday:</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">td</span> · 94% match</span>
+                  <span class="add">Wednesday</span>
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">span</span></span>
+                  <span class="del">Thursday:</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">td</span> · 94% match</span>
+                  <span class="add">Thursday</span>
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">span</span></span>
+                  <span class="del">Friday:</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">td</span> · 92% match</span>
+                  <span class="add">Friday</span>
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">span</span></span>
+                  Sat – <span class="del">Sun:</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">td</span> · 94% match</span>
+                  Sat – <span class="add">Sun</span>
+                </div>
+              </div>
+            
+              <div class="changed-pair">
+                <div class="changed-side live">
+                  <span class="side-label">Live <span class="tag">p</span></span>
+                  © 2026 Malbis Parkway Pediatric <span class="del">Dentistry.</span> <span class="del">All</span> <span class="del">rights</span> <span class="del">reserved.</span>
+                </div>
+                <div class="changed-side staging">
+                  <span class="side-label">Staging <span class="tag">div</span> · 63% match</span>
+                  ©<span class="add"> Copyright</span> 2026 Malbis Parkway Pediatric <span class="add">Dentistry</span> <span class="add">Orthodontic</span> <span class="add">Marketing</span> <span class="add">&amp;</span>
+                </div>
+              </div>
+            </div>
+    
+    
+    <h2>Fonts</h2>
+    
+    <div class="card">
+      <h3>Font families in use</h3>
+      <div class="fonts-grid">
+        <div>
+          <div class="side-label" style="color:#15803d;">LIVE (2)</div>
+          <div class="font-chips"><span class="font-chip font-chip-shared" style="font-family: Nunito, sans-serif;">Nunito</span><span class="font-chip font-chip-shared" style="font-family: Cormorant Garamond, sans-serif;">Cormorant Garamond</span></div>
+        </div>
+        <div>
+          <div class="side-label" style="color:#1d4ed8;">STAGING (4)</div>
+          <div class="font-chips"><span class="font-chip font-chip-shared" style="font-family: Nunito, sans-serif;">Nunito</span><span class="font-chip font-chip-shared" style="font-family: Cormorant Garamond, sans-serif;">Cormorant Garamond</span><span class="font-chip font-chip-staging" style="font-family: Arial, sans-serif;">Arial</span><span class="font-chip font-chip-staging" style="font-family: Figtree, sans-serif;">Figtree</span></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin:12px 0 0;">
+        <span class="font-swatch font-chip-live"></span> only on live &nbsp;
+        <span class="font-swatch font-chip-staging"></span> only on staging &nbsp;
+        <span class="font-swatch font-chip-shared"></span> shared
+      </p>
+    </div>
+    
+    <div class="card"><h3>Per-text font mismatches (2 found)</h3><p style="font-size:13px;color:#6b7280;margin:0 0 12px;">Text that appears on both pages but is rendered with a different font-family. The screenshot crops show where each piece of flagged text sits on the page.</p>
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">h4</span>Quick Links
+                  <span class="alt-mono" style="margin-left:8px;">in <code>grid grid-cols-1</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/font_live_0.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/font_staging_0.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE font</span>
+                    <span style="font-family: Nunito, sans-serif; font-weight:600;">Nunito</span>
+                    <span class="alt-mono" style="margin-left:8px;">14px / weight 700</span>
+                    <div class="alt-mono" title="full computed font-family">Nunito</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING font</span>
+                    <span style="font-family: Figtree, sans-serif; font-weight:600;">Figtree</span>
+                    <span class="alt-mono" style="margin-left:8px;">14px / weight 700</span>
+                    <div class="alt-mono" title="full computed font-family">Figtree, sans-serif</div>
+                  </div>
+                </div>
+              </div>
+            
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">h4</span>Office Hours
+                  <span class="alt-mono" style="margin-left:8px;">in <code>grid grid-cols-1</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/font_live_1.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/font_staging_1.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE font</span>
+                    <span style="font-family: Nunito, sans-serif; font-weight:600;">Nunito</span>
+                    <span class="alt-mono" style="margin-left:8px;">14px / weight 700</span>
+                    <div class="alt-mono" title="full computed font-family">Nunito</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING font</span>
+                    <span style="font-family: Figtree, sans-serif; font-weight:600;">Figtree</span>
+                    <span class="alt-mono" style="margin-left:8px;">14px / weight 700</span>
+                    <div class="alt-mono" title="full computed font-family">Figtree, sans-serif</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+    
+    
+    <h2>Colors</h2>
+    
+    <div class="card">
+      <h3>Text colors in use</h3>
+      <div class="fonts-grid">
+        <div>
+          <div class="side-label" style="color:#15803d;">LIVE (11)</div>
+          <div class="color-chips"><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(255,255,255);"></span><span class="color-hex">#ffffff</span><span class="color-count">×31</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(107,138,145);"></span><span class="color-hex">#6b8a91</span><span class="color-count">×14</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(26,46,53);"></span><span class="color-hex">#1a2e35</span><span class="color-count">×14</span></span><span class="color-chip color-chip-live"><span class="color-swatch" style="background:rgb(0,108,114);"></span><span class="color-hex">#006c72</span><span class="color-count">×10</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgba(255,255,255,0.7);"></span><span class="color-hex">#ffffffb2</span><span class="color-count">×8</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgba(255,255,255,0.8);"></span><span class="color-hex">#ffffffcc</span><span class="color-count">×8</span></span><span class="color-chip color-chip-live"><span class="color-swatch" style="background:rgba(255,255,255,0.5);"></span><span class="color-hex">#ffffff80</span><span class="color-count">×6</span></span><span class="color-chip color-chip-live"><span class="color-swatch" style="background:rgba(255,255,255,0.6);"></span><span class="color-hex">#ffffff99</span><span class="color-count">×4</span></span><span class="color-chip color-chip-live"><span class="color-swatch" style="background:rgba(255,255,255,0.9);"></span><span class="color-hex">#ffffffe6</span><span class="color-count">×4</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(30,143,160);"></span><span class="color-hex">#1e8fa0</span><span class="color-count">×3</span></span><span class="color-chip color-chip-live"><span class="color-swatch" style="background:rgba(255,255,255,0.4);"></span><span class="color-hex">#ffffff66</span><span class="color-count">×2</span></span></div>
+        </div>
+        <div>
+          <div class="side-label" style="color:#1d4ed8;">STAGING (9)</div>
+          <div class="color-chips"><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(255,255,255);"></span><span class="color-hex">#ffffff</span><span class="color-count">×79</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgba(255,255,255,0.7);"></span><span class="color-hex">#ffffffb2</span><span class="color-count">×35</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(107,138,145);"></span><span class="color-hex">#6b8a91</span><span class="color-count">×14</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(26,46,53);"></span><span class="color-hex">#1a2e35</span><span class="color-count">×13</span></span><span class="color-chip color-chip-staging"><span class="color-swatch" style="background:rgb(85,85,85);"></span><span class="color-hex">#555555</span><span class="color-count">×12</span></span><span class="color-chip color-chip-staging"><span class="color-swatch" style="background:rgb(0,107,112);"></span><span class="color-hex">#006b70</span><span class="color-count">×10</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgb(30,143,160);"></span><span class="color-hex">#1e8fa0</span><span class="color-count">×4</span></span><span class="color-chip color-chip-staging"><span class="color-swatch" style="background:rgb(238,37,93);"></span><span class="color-hex">#ee255d</span><span class="color-count">×2</span></span><span class="color-chip color-chip-shared"><span class="color-swatch" style="background:rgba(255,255,255,0.8);"></span><span class="color-hex">#ffffffcc</span><span class="color-count">×1</span></span></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin:12px 0 0;">
+        <span class="font-swatch color-chip-live"></span> only on live &nbsp;
+        <span class="font-swatch color-chip-staging"></span> only on staging &nbsp;
+        <span class="font-swatch color-chip-shared"></span> shared
+      </p>
+    </div>
+    
+    <div class="card"><h3>Per-text color mismatches (7 found)</h3><p style="font-size:13px;color:#6b7280;margin:0 0 12px;">Text that appears on both pages but is rendered with a different color. Crops show where on the page each piece of flagged text sits.</p>
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">a</span>Services
+                  <span class="alt-mono" style="margin-left:8px;">in <code>hidden md:flex</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_live_0.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_staging_0.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE color</span>
+                    <span class="color-swatch" style="background:rgb(26, 46, 53);"></span>
+                    <span class="color-hex" style="font-weight:600;">#1a2e35</span>
+                    <div class="alt-mono">rgb(26, 46, 53)</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING color</span>
+                    <span class="color-swatch" style="background:rgb(30, 143, 160);"></span>
+                    <span class="color-hex" style="font-weight:600;">#1e8fa0</span>
+                    <div class="alt-mono">rgb(30, 143, 160)</div>
+                  </div>
+                </div>
+                
+              </div>
+            
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">p</span>Comprehensive pediatric dental care from infancy through the teen years.
+                  <span class="alt-mono" style="margin-left:8px;">in <code>container relative</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_live_1.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_staging_1.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE color</span>
+                    <span class="color-swatch" style="background:oklab(0.999994 0.0000455677 0.0000200868 / 0.8);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffffcc</span>
+                    <div class="alt-mono">rgba(255, 255, 255, 0.8)</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING color</span>
+                    <span class="color-swatch" style="background:rgb(255, 255, 255);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffff</span>
+                    <div class="alt-mono">rgb(255, 255, 255)</div>
+                  </div>
+                </div>
+                
+              </div>
+            
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">span</span>Pediatric Dental Service
+                  <span class="alt-mono" style="margin-left:8px;">in <code>p-5 md:p-8</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_live_2.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_staging_2.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE color</span>
+                    <span class="color-swatch" style="background:oklch(0.48 0.09 200);"></span>
+                    <span class="color-hex" style="font-weight:600;">#006c72</span>
+                    <div class="alt-mono">rgb(0, 108, 114)</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING color</span>
+                    <span class="color-swatch" style="background:rgb(0, 107, 112);"></span>
+                    <span class="color-hex" style="font-weight:600;">#006b70</span>
+                    <div class="alt-mono">rgb(0, 107, 112)</div>
+                  </div>
+                </div>
+                
+                  <div class="alt-mono" style="margin-top:6px;">
+                    Background: LIVE <span class="color-swatch" style="background:#d2eef0;"></span><span class="color-hex">#d2eef0</span> &nbsp;·&nbsp; STAGING <span class="alt-mono">transparent</span>
+                  </div>
+                
+              </div>
+            
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">span</span>8:00am – 5:00pm
+                  <span class="alt-mono" style="margin-left:8px;">in <code>flex items-start</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_live_3.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_staging_3.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE color</span>
+                    <span class="color-swatch" style="background:oklab(0.999994 0.0000455677 0.0000200868 / 0.8);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffffcc</span>
+                    <div class="alt-mono">rgba(255, 255, 255, 0.8)</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING color</span>
+                    <span class="color-swatch" style="background:rgb(255, 255, 255);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffff</span>
+                    <div class="alt-mono">rgb(255, 255, 255)</div>
+                  </div>
+                </div>
+                
+              </div>
+            
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">span</span>8:00am – 12:00pm
+                  <span class="alt-mono" style="margin-left:8px;">in <code>flex items-start</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_live_4.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_staging_4.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE color</span>
+                    <span class="color-swatch" style="background:oklab(0.999994 0.0000455677 0.0000200868 / 0.8);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffffcc</span>
+                    <div class="alt-mono">rgba(255, 255, 255, 0.8)</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING color</span>
+                    <span class="color-swatch" style="background:rgb(255, 255, 255);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffff</span>
+                    <div class="alt-mono">rgb(255, 255, 255)</div>
+                  </div>
+                </div>
+                
+              </div>
+            
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">span</span>Closed
+                  <span class="alt-mono" style="margin-left:8px;">in <code>flex items-start</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_live_5.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_staging_5.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE color</span>
+                    <span class="color-swatch" style="background:oklab(0.999994 0.0000455677 0.0000200868 / 0.8);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffffcc</span>
+                    <div class="alt-mono">rgba(255, 255, 255, 0.8)</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING color</span>
+                    <span class="color-swatch" style="background:rgb(255, 255, 255);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffff</span>
+                    <div class="alt-mono">rgb(255, 255, 255)</div>
+                  </div>
+                </div>
+                
+              </div>
+            
+              <div class="font-mismatch-row">
+                <div class="font-mismatch-text">
+                  <span class="tag">p</span>9807 McSara Ct., Spanish Fort, AL 36527
+                  <span class="alt-mono" style="margin-left:8px;">in <code>border-t border-white/10</code></span>
+                </div>
+                
+                  <div class="crop-pair">
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#15803d;">LIVE — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_live_6.png" alt="live screenshot of this text"></div>
+                    </div>
+                    <div class="crop-col">
+                      <div class="side-label" style="color:#1d4ed8;">STAGING — where on the page</div>
+                      <div class="crop-wrap"><img src="qa_output/font_crops/color_staging_6.png" alt="staging screenshot of this text"></div>
+                    </div>
+                  </div>
+                
+                <div class="font-mismatch-pair">
+                  <div class="changed-side live">
+                    <span class="side-label">LIVE color</span>
+                    <span class="color-swatch" style="background:oklab(0.999994 0.0000455678 0.0000200868 / 0.4);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffff66</span>
+                    <div class="alt-mono">rgba(255, 255, 255, 0.4)</div>
+                  </div>
+                  <div class="changed-side staging">
+                    <span class="side-label">STAGING color</span>
+                    <span class="color-swatch" style="background:rgb(255, 255, 255);"></span>
+                    <span class="color-hex" style="font-weight:600;">#ffffff</span>
+                    <div class="alt-mono">rgb(255, 255, 255)</div>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+    
+    </div>
+  <script>
+const syncToggle = document.getElementById('sync');
+const zoomSlider = document.getElementById('zoom');
+const zoomLabel = document.getElementById('zoom-label');
+
+// ZOOM — apply uniformly to every screenshot in every width block
+function applyZoom() {
+  const v = zoomSlider ? zoomSlider.value : 100;
+  document.querySelectorAll('.shot-wrap img').forEach(img => {
+    img.style.transform = `scale(${v / 100})`;
+  });
+  if (zoomLabel) zoomLabel.textContent = `${v}%`;
+}
+if (zoomSlider) {
+  zoomSlider.addEventListener('input', applyZoom);
+  applyZoom();
+}
+
+// SMOOTH-SCROLL via width tabs
+document.querySelectorAll('.width-tab').forEach(tab => {
+  tab.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(tab.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+
+// SYNC SCROLL — within each width block, scroll live and staging together
+document.querySelectorAll('.width-block').forEach(block => {
+  const wraps = block.querySelectorAll('.shot-wrap');
+  if (wraps.length !== 2) return;
+  let syncing = false;
+  const sync = (src, dest) => {
+    if (!syncToggle || !syncToggle.checked) return;
+    if (syncing) return;
+    syncing = true;
+    dest.scrollTop = src.scrollTop;
+    dest.scrollLeft = src.scrollLeft;
+    requestAnimationFrame(() => { syncing = false; });
+  };
+  wraps[0].addEventListener('scroll', () => sync(wraps[0], wraps[1]));
+  wraps[1].addEventListener('scroll', () => sync(wraps[1], wraps[0]));
+});
+</script>
+</body>
+</html>
