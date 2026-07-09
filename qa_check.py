@@ -34,12 +34,12 @@ from PIL import Image
 # ===========================================================================
 # >>> EDIT THESE <<<
 # ===========================================================================
-LIVE_URL = "https://malbisdentstaging.com/services"
-STAGING_URL = "https://malbisparkwaydentistry.kinsta.cloud/services/"
+LIVE_URL = "https://masriortho.com/lingual-braces/"
+STAGING_URL = "https://masriorthodontics.kinsta.cloud/treatments/lingual-braces/
 
 # Viewport widths to capture (px). Each width produces its own pair of
 # screenshots in the report.
-VIEWPORT_WIDTHS = [1440, 768, 320]
+VIEWPORT_WIDTHS = [1440, 768, 320,]
 
 # Each viewport's height. The full-page screenshot will scroll past this; the
 # height just defines what's "above the fold" for any sticky elements.
@@ -47,6 +47,11 @@ VIEWPORT_HEIGHT = 900
 
 # How long to wait after DOM loads for fonts/images/animations to settle (seconds).
 WAIT_SECONDS = 4
+
+# If your STAGING site is behind HTTP Basic Auth (common on Kinsta/WP Engine
+# staging), set these. Leave both as "" to skip auth.
+STAGING_HTTP_USER = ""
+STAGING_HTTP_PASS = ""
 
 # How similar two text snippets need to be to count as "changed" (vs. separate
 # entries). 0.0 = totally different, 1.0 = identical. 0.6 catches rewordings
@@ -66,6 +71,171 @@ USER_AGENT = (
 # ===========================================================================
 # Browser-side text extraction
 # ===========================================================================
+# WP themes hide content with opacity:0 / transform until an
+# IntersectionObserver fires a "reveal" class — and lazy-load images
+# via data-src / loading="lazy" until they scroll into view. Programmatic
+# scroll often skips both. This script forces everything visible AND
+# triggers lazy images to load eagerly.
+FORCE_VISIBLE_JS = r"""
+() => {
+  if (!document.getElementById('__qa_force_visible__')) {
+    const style = document.createElement('style');
+    style.id = '__qa_force_visible__';
+    style.textContent = `
+      *, *::before, *::after {
+        animation-duration: 0.001s !important;
+        animation-delay: 0s !important;
+        transition-duration: 0s !important;
+        transition-delay: 0s !important;
+      }
+      .elementor-invisible,
+      .aos-init, [data-aos], [data-animation],
+      .fade-in, .fadeIn, .slide-up, .slideUp, .slide-in, .slideIn,
+      .reveal, .reveal-on-scroll, .wow, .animated, .has-animation,
+      .scroll-animation, .scroll-reveal {
+        opacity: 1 !important;
+        transform: none !important;
+        visibility: visible !important;
+        animation: none !important;
+      }
+      html { scroll-behavior: auto !important; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Clear inline styles that hide elements
+  document.querySelectorAll('*').forEach(el => {
+    const s = el.style;
+    if (s.opacity === '0' || parseFloat(s.opacity) === 0) s.opacity = '';
+    if (s.transform && /translate|matrix|scale\(0/i.test(s.transform)) s.transform = '';
+    if (s.visibility === 'hidden') s.visibility = '';
+    if (s.filter && /blur/i.test(s.filter)) s.filter = '';
+  });
+
+  // Activate known reveal classes
+  document.querySelectorAll('.aos-init').forEach(el => el.classList.add('aos-animate'));
+  document.querySelectorAll('.elementor-invisible').forEach(el => {
+    el.classList.remove('elementor-invisible');
+  });
+  document.querySelectorAll('.wow').forEach(el => el.classList.add('animated'));
+
+  // Force lazy-loaded images to load eagerly. Covers native loading="lazy",
+  // WP Rocket lazyload, jQuery lazy plugins, and Elementor's data-src pattern.
+  document.querySelectorAll('img').forEach(img => {
+    if (img.loading === 'lazy') img.loading = 'eager';
+    ['data-src', 'data-lazy-src', 'data-original', 'data-srcset'].forEach(attr => {
+      const v = img.getAttribute(attr);
+      if (!v) return;
+      if (attr === 'data-srcset' || attr === 'data-lazy-srcset') {
+        if (!img.srcset) img.srcset = v;
+      } else if (!img.src || img.src.endsWith('placeholder.svg') ||
+                 img.src.includes('data:image/svg') || img.src.includes('1x1')) {
+        img.src = v;
+      }
+    });
+    img.classList.remove('lazyload', 'lazyloading', 'rocket-lazyload');
+    img.classList.add('lazyloaded');
+  });
+
+  // <source> in <picture> with data-srcset (WP Rocket pattern)
+  document.querySelectorAll('source[data-srcset], source[data-lazy-srcset]').forEach(src => {
+    const v = src.getAttribute('data-srcset') || src.getAttribute('data-lazy-srcset');
+    if (v && !src.srcset) src.srcset = v;
+  });
+
+  // Background-image lazy patterns
+  document.querySelectorAll('[data-bg], [data-background], [data-bg-image]').forEach(el => {
+    const bg = el.getAttribute('data-bg') || el.getAttribute('data-background')
+            || el.getAttribute('data-bg-image');
+    if (bg && !el.style.backgroundImage) {
+      el.style.backgroundImage = `url("${bg}")`;
+    }
+  });
+
+  // WP Rocket inline scripts: type="rocketlazyloadscript" → activate them.
+  document.querySelectorAll('script[type="rocketlazyloadscript"]').forEach(s => {
+    const ns = document.createElement('script');
+    for (const a of s.attributes) {
+      if (a.name === 'type') continue;
+      ns.setAttribute(a.name, a.value);
+    }
+    ns.textContent = s.textContent;
+    s.parentNode.replaceChild(ns, s);
+  });
+}
+"""
+
+# Dismiss any hover tooltips, map info-windows, popups, or sticky banners
+# that Playwright may have triggered during scrolling. Called immediately
+# before taking the final screenshot so they don't obscure content.
+DISMISS_OVERLAYS_JS = r"""
+() => {
+  // 1. Replace every iframe that looks like a map with a plain placeholder.
+  //    Map iframes render tooltips ("Request", "Map") inside their own
+  //    shadow DOM — completely unreachable by JS on the host page.
+  //    Swapping them out is the only reliable way to suppress those tooltips.
+  document.querySelectorAll('iframe').forEach(iframe => {
+    const src = (iframe.src || iframe.getAttribute('data-src') || '').toLowerCase();
+    const isMap = src.includes('google.com/maps') ||
+                  src.includes('maps.google') ||
+                  src.includes('maps.googleapis') ||
+                  src.includes('openstreetmap') ||
+                  src.includes('bing.com/maps') ||
+                  iframe.closest('[class*="map"], [id*="map"], [class*="gmap"], [id*="gmap"]');
+    if (isMap) {
+      const cs = window.getComputedStyle(iframe);
+      const w = cs.width || iframe.offsetWidth + 'px';
+      const h = cs.height || iframe.offsetHeight + 'px';
+      const ph = document.createElement('div');
+      ph.setAttribute('data-qa-map-placeholder', '1');
+      ph.style.cssText =
+        'width:' + w + ';height:' + h + ';' +
+        'background:#e8eaed;display:flex;align-items:center;' +
+        'justify-content:center;color:#666;font-size:13px;' +
+        'font-family:sans-serif;border:1px solid #ccc;box-sizing:border-box;';
+      ph.textContent = '[Map]';
+      iframe.parentNode.replaceChild(ph, iframe);
+    }
+  });
+
+  // 2. Dismiss generic tooltip libraries (Tippy, Popper, Bootstrap, WP)
+  document.querySelectorAll(
+    '[data-tippy-content], .tippy-box, .tippy-popper, ' +
+    '.tooltip, .tooltipster-base, ' +
+    '.elementor-tooltip, [class*="tooltip"]'
+  ).forEach(el => {
+    const s = window.getComputedStyle(el);
+    if (s.position === 'absolute' || s.position === 'fixed') {
+      el.style.display = 'none';
+    }
+  });
+
+  // 3. Dismiss calendar / booking popups
+  document.querySelectorAll(
+    '.calendly-overlay, .calendly-popup, ' +
+    '[class*="booking-popup"], [class*="bookingpress-popup"], ' +
+    '[class*="amelia-popup"], [id*="booking-modal"], ' +
+    '[class*="modal"].is-open, [class*="popup"].is-open, ' +
+    '[class*="dialog"][open]'
+  ).forEach(el => { el.style.display = 'none'; });
+
+  // 4. Hide any floating overlay (z-index > 100, inside viewport, not a navbar)
+  document.querySelectorAll('*').forEach(el => {
+    if (el.getAttribute('data-qa-map-placeholder')) return;
+    const s = window.getComputedStyle(el);
+    if ((s.position === 'fixed' || s.position === 'absolute') &&
+        parseInt(s.zIndex) > 100 && s.display !== 'none') {
+      const r = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      if (r.width > vw * 0.3 && r.top > 80 && r.top < window.innerHeight) {
+        el.style.display = 'none';
+      }
+    }
+  });
+}
+"""
+
+
 EXTRACT_TEXT_JS = r"""
 () => {
   const SKIP_TAGS = new Set([
@@ -177,40 +347,171 @@ def capture_url_at_widths(
     """
     screenshots: dict[int, str] = {}
     texts: list[dict] | None = None
+    # Kinsta/WP Engine staging servers often use self-signed TLS certs and
+    # redirect through a splash page. ignore_https_errors lets Playwright
+    # load the page anyway.
+    is_staging = label == "staging"
+
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--disable-web-security",
+                    "--ignore-certificate-errors",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            )
 
             for width in widths:
                 print(f"  [{label}] {width}px ...", end=" ", flush=True)
-                context = browser.new_context(
+
+                ctx_kwargs: dict = dict(
                     user_agent=USER_AGENT,
                     viewport={"width": width, "height": VIEWPORT_HEIGHT},
+                    ignore_https_errors=True,
                 )
+                # HTTP Basic Auth for password-protected staging environments
+                if is_staging and STAGING_HTTP_USER and STAGING_HTTP_PASS:
+                    ctx_kwargs["http_credentials"] = {
+                        "username": STAGING_HTTP_USER,
+                        "password": STAGING_HTTP_PASS,
+                    }
+
+                context = browser.new_context(**ctx_kwargs)
                 page = context.new_page()
                 try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=60_000)
-                    page.wait_for_timeout(WAIT_SECONDS * 1000)
+                    # Staging servers are slower — try "load" first, fall back to
+                    # "domcontentloaded" so a slow image server doesn't block us.
+                    try:
+                        page.goto(url, wait_until="load", timeout=90_000)
+                    except Exception:
+                        try:
+                            page.goto(url, wait_until="domcontentloaded", timeout=90_000)
+                        except Exception:
+                            page.goto(url, wait_until="commit", timeout=90_000)
+
+                    # Extra pause for staging: let the server-side render settle
+                    # before we touch the DOM (Kinsta cold-start can be 3-5 s).
+                    if is_staging:
+                        page.wait_for_timeout(3_000)
+
+                    # Wait for web fonts so text renders in its real face.
+                    try:
+                        page.evaluate("() => document.fonts && document.fonts.ready")
+                    except Exception:
+                        pass
+
+                    # Force visible + eager-load lazy images BEFORE the scroll.
+                    page.evaluate(FORCE_VISIBLE_JS)
+
+                    # Scroll one viewport at a time with a pause at each stop.
+                    # Staging gets a longer sleep per step (600 ms vs 450 ms)
+                    # because CDN assets load slower on non-production hosts.
+                    scroll_sleep = 600 if is_staging else 450
                     page.evaluate(
-                        "() => new Promise(resolve => {"
-                        "  const distance = 300;"
-                        "  const delay = 100;"
-                        "  const timer = setInterval(() => {"
-                        "    window.scrollBy(0, distance);"
-                        "    if (window.innerHeight + window.scrollY >= document.body.scrollHeight) {"
-                        "      clearInterval(timer);"
-                        "      window.scrollTo(0, 0);"
-                        "      resolve();"
-                        "    }"
-                        "  }, delay);"
-                        "})"
+                        f"() => new Promise(async resolve => {{"
+                        f"  const sleep = ms => new Promise(r => setTimeout(r, ms));"
+                        f"  const step = Math.max(200, Math.floor(window.innerHeight * 0.8));"
+                        f"  let y = 0;"
+                        f"  while (y < document.body.scrollHeight) {{"
+                        f"    window.scrollTo(0, y);"
+                        f"    window.dispatchEvent(new Event('scroll'));"
+                        f"    await sleep({scroll_sleep});"
+                        f"    y += step;"
+                        f"  }}"
+                        f"  window.scrollTo(0, document.body.scrollHeight);"
+                        f"  window.dispatchEvent(new Event('scroll'));"
+                        f"  await sleep(800);"
+                        f"  window.scrollTo(0, 0);"
+                        f"  window.dispatchEvent(new Event('scroll'));"
+                        f"  window.dispatchEvent(new Event('resize'));"
+                        f"  await sleep(400);"
+                        f"  resolve();"
+                        f"}})"
                     )
-                    page.wait_for_timeout(500)
+
+                    # Let any scroll-triggered network requests settle.
+                    # Staging gets a much longer networkidle window.
+                    idle_timeout = 30_000 if is_staging else 15_000
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=idle_timeout)
+                    except Exception:
+                        pass
+
+                    # Second scroll pass: staging pages sometimes reveal new lazy
+                    # sections only after the first networkidle settles (e.g. a
+                    # Google Maps widget or a contact form loaded by a plugin).
+                    if is_staging:
+                        page.evaluate(
+                            "() => new Promise(async resolve => {"
+                            "  const sleep = ms => new Promise(r => setTimeout(r, ms));"
+                            "  const step = Math.max(400, Math.floor(window.innerHeight * 0.9));"
+                            "  let y = 0;"
+                            "  while (y < document.body.scrollHeight) {"
+                            "    window.scrollTo(0, y);"
+                            "    window.dispatchEvent(new Event('scroll'));"
+                            "    await sleep(300);"
+                            "    y += step;"
+                            "  }"
+                            "  window.scrollTo(0, 0);"
+                            "  await sleep(300);"
+                            "  resolve();"
+                            "})"
+                        )
+                        try:
+                            page.wait_for_load_state("networkidle", timeout=15_000)
+                        except Exception:
+                            pass
+
+                    # Re-apply: lazy widgets may have inserted new nodes
+                    # during scroll, and reveal observers may have re-hidden
+                    # elements when we scrolled back to top.
+                    page.evaluate(FORCE_VISIBLE_JS)
+
+                    # Wait for EVERY <img> to be fully decoded.
+                    page.evaluate(
+                        "() => Promise.all("
+                        "  Array.from(document.images)"
+                        "    .filter(img => !img.complete)"
+                        "    .map(img => new Promise(r => {"
+                        "      img.addEventListener('load', r, {once: true});"
+                        "      img.addEventListener('error', r, {once: true});"
+                        "    }))"
+                        ")"
+                    )
+
+                    # Final settle for sliders / CSS animations to land.
+                    # Staging gets extra time.
+                    settle = (WAIT_SECONDS + 3) * 1000 if is_staging else WAIT_SECONDS * 1000
+                    page.wait_for_timeout(settle)
 
                     if extract_text_at_width == width and texts is None:
                         texts = page.evaluate(EXTRACT_TEXT_JS)
 
+                    # Move mouse to a safe corner to clear any hover state
+                    # accumulated during scrolling, then dismiss overlays.
+                    try:
+                        page.mouse.move(0, 0)
+                    except Exception:
+                        pass
+
+                    # Dismiss map iframes (their shadow-DOM tooltips are
+                    # unreachable by JS), generic tooltips, and popups.
+                    try:
+                        page.evaluate(DISMISS_OVERLAYS_JS)
+                        page.wait_for_timeout(400)
+                    except Exception:
+                        pass
+
                     img_path = out_dir / f"{label}_{width}.png"
+
+                    # full_page=True is the correct approach — it tiles the page
+                    # by scrolling internally without reflowing the layout.
+                    # Setting viewport height to page height (our old approach)
+                    # caused hero images/videos to scale up and render blurry.
+                    # Map iframes are already replaced with placeholders by
+                    # DISMISS_OVERLAYS_JS above, so their tooltips are gone.
                     page.screenshot(path=str(img_path), full_page=True)
                     screenshots[width] = f"{OUTPUT_DIR}/{label}_{width}.png"
                     print("OK")
@@ -877,16 +1178,16 @@ h2 { margin: 32px 0 12px; font-size: 20px; border-bottom: 1px solid #e3e5e8; pad
 }
 .width-pane-header a:hover { text-decoration: underline; }
 .shot-wrap {
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   max-height: 80vh;
   background: #fafbfc;
 }
 .shot-wrap img {
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
-  transition: transform 0.1s;
-  transform-origin: top left;
+  transition: width 0.15s;
 }
 .shot-missing {
   padding: 40px;
@@ -1111,11 +1412,15 @@ const syncToggle = document.getElementById('sync');
 const zoomSlider = document.getElementById('zoom');
 const zoomLabel = document.getElementById('zoom-label');
 
-// ZOOM — apply uniformly to every screenshot in every width block
+// ZOOM — apply uniformly to every screenshot in every width block.
+// We drive width% (not transform:scale) so the image actually reflows
+// inside its scrollable container rather than overflowing invisibly.
+// 100% = fit-to-pane-width (default). Values above 100% let you zoom in.
 function applyZoom() {
   const v = zoomSlider ? zoomSlider.value : 100;
   document.querySelectorAll('.shot-wrap img').forEach(img => {
-    img.style.transform = `scale(${v / 100})`;
+    img.style.width = v + '%';
+    img.style.maxWidth = 'none';
   });
   if (zoomLabel) zoomLabel.textContent = `${v}%`;
 }
@@ -1571,7 +1876,7 @@ def render_report(
 
     <div class="controls">
       <label><input type="checkbox" id="sync" checked> Sync scroll</label>
-      <label>Zoom: <input type="range" id="zoom" min="25" max="200" value="100"> <span id="zoom-label" class="zoom-val">100%</span></label>
+      <label>Zoom: <input type="range" id="zoom" min="25" max="300" value="100"> <span id="zoom-label" class="zoom-val">100%</span></label>
     </div>
 
     <h2>Screenshots by viewport width</h2>
